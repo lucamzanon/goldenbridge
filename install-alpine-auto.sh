@@ -33,7 +33,7 @@ if [ -d "/opt/goldenbridge" ]; then
 fi
 
 cd /opt
-git clone https://github.com/YOUR_USERNAME/goldenbridge.git
+git clone https://github.com/lucamzanon/goldenbridge.git
 cd goldenbridge
 
 # Installa dipendenze Python
