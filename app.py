@@ -12,11 +12,14 @@ from flask_socketio import SocketIO, emit
 import threading
 import time
 
+# Importa la configurazione
+from config import TURBOGOLDEN_HOST, TURBOGOLDEN_PORT, FLASK_SECRET_KEY, FLASK_HOST, FLASK_PORT, FLASK_DEBUG
+
 # Importa la libreria TurboGOLDEN (nella stessa directory)
 from turbogolden_client import TurboGoldenClient
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'turbogolden-secret-key-change-in-production'
+app.config['SECRET_KEY'] = FLASK_SECRET_KEY
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Dizionario per gestire le sessioni attive
@@ -35,7 +38,7 @@ class TerminalSession:
     def connect(self):
         """Connette al sistema TurboGOLDEN"""
         try:
-            self.client = TurboGoldenClient(debug=True)
+            self.client = TurboGoldenClient(host=TURBOGOLDEN_HOST, port=TURBOGOLDEN_PORT, debug=True)
             self.client.connect(self.username)
             self.running = True
 
@@ -159,9 +162,10 @@ if __name__ == '__main__':
     print("=" * 60)
     print("TurboGOLDEN Web Terminal Server")
     print("=" * 60)
-    print(f"Server in ascolto su: http://localhost:8080")
+    print(f"Server TurboGOLDEN: {TURBOGOLDEN_HOST}:{TURBOGOLDEN_PORT}")
+    print(f"Server in ascolto su: http://{FLASK_HOST}:{FLASK_PORT}")
     print(f"Connetti con il browser a: http://localhost")
     print("=" * 60)
 
     # Avvia il server
-    socketio.run(app, host='0.0.0.0', port=8080, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG, allow_unsafe_werkzeug=True)
