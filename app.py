@@ -44,6 +44,7 @@ class TerminalSession:
 
             # Leggi l'output iniziale
             initial_output = self.client.read_output()
+            print(f"[DEBUG] Output iniziale ({len(initial_output)} bytes): {repr(initial_output)}")
             socketio.emit('output', {'data': initial_output}, room=self.session_id)
 
             # Avvia il thread di lettura continua
@@ -62,6 +63,7 @@ class TerminalSession:
                 # Leggi con timeout breve per non bloccare
                 output = self.client.read_output(timeout=0.5)
                 if output:
+                    print(f"[DEBUG] Output loop ({len(output)} bytes): {repr(output[:100])}")
                     socketio.emit('output', {'data': output}, room=self.session_id)
             except Exception as e:
                 if self.running:
@@ -73,6 +75,7 @@ class TerminalSession:
         """Invia input al terminale"""
         if self.client and self.running:
             try:
+                print(f"[DEBUG] Input ricevuto ({len(data)} bytes): {repr(data)}")
                 self.client.tn.write(data.encode('latin-1'))
             except Exception as e:
                 socketio.emit('output', {'data': f'\r\n[ERRORE] Invio: {str(e)}\r\n'}, room=self.session_id)
