@@ -42,9 +42,13 @@ class TerminalSession:
             self.client.connect(self.username)
             self.running = True
 
-            # Leggi l'output iniziale
-            initial_output = self.client.read_output()
-            print(f"[DEBUG] Output iniziale ({len(initial_output)} bytes): {repr(initial_output)}")
+            # Forza refresh schermo inviando Ctrl+L
+            self.client.tn.write(b"\x0C")  # Ctrl+L per refresh
+            time.sleep(0.5)
+
+            # Leggi l'output iniziale (ora dovrebbe contenere lo schermo completo)
+            initial_output = self.client.read_output(timeout=3)
+            print(f"[DEBUG] Output iniziale ({len(initial_output)} bytes): {repr(initial_output[:200])}")
             socketio.emit('output', {'data': initial_output}, room=self.session_id)
 
             # Avvia il thread di lettura continua
