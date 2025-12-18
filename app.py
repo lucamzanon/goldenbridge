@@ -12,9 +12,7 @@ from flask_socketio import SocketIO, emit
 import threading
 import time
 
-# Aggiungi il path della libreria TurboGOLDEN
-sys.path.insert(0, '/home/coder/goldenbridge/lib')
-
+# Importa la libreria TurboGOLDEN (nella stessa directory)
 from turbogolden_client import TurboGoldenClient
 
 app = Flask(__name__)
