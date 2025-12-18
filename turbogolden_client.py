@@ -71,6 +71,7 @@ class TurboGoldenClient:
         self.debug = debug
         self.tn: Optional[telnetlib.Telnet] = None
         self._connected = False
+        self.login_buffer = ""  # Buffer per salvare output durante login
 
     def _log(self, message: str):
         """Stampa messaggio di debug"""

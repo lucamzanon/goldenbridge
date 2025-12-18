@@ -15,9 +15,6 @@ import time
 # Importa la configurazione
 from config import TURBOGOLDEN_HOST, TURBOGOLDEN_PORT, FLASK_SECRET_KEY, FLASK_HOST, FLASK_PORT, FLASK_DEBUG
 
-# Importa la libreria TurboGOLDEN (nella stessa directory)
-from turbogolden_client import TurboGoldenClient
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = FLASK_SECRET_KEY
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
@@ -31,25 +28,32 @@ class TerminalSession:
     def __init__(self, session_id, username):
         self.session_id = session_id
         self.username = username
-        self.client = None
+        self.tn = None  # Connessione telnet diretta
         self.running = False
         self.read_thread = None
 
     def connect(self):
-        """Connette al sistema TurboGOLDEN"""
+        """Connette direttamente al telnet senza autenticazione"""
         try:
-            self.client = TurboGoldenClient(host=TURBOGOLDEN_HOST, port=TURBOGOLDEN_PORT, debug=True)
-            self.client.connect(self.username)
+            import telnetlib
+            import socket
+
+            # Connessione telnet diretta
+            self.tn = telnetlib.Telnet(TURBOGOLDEN_HOST, TURBOGOLDEN_PORT, timeout=15)
+
+            # Abilita TCP_NODELAY
+            self.tn.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
             self.running = True
 
-            # Forza refresh schermo inviando Ctrl+L
-            self.client.tn.write(b"\x0C")  # Ctrl+L per refresh
-            time.sleep(0.5)
+            print(f"[INFO] Connesso a {TURBOGOLDEN_HOST}:{TURBOGOLDEN_PORT}")
 
-            # Leggi l'output iniziale (ora dovrebbe contenere lo schermo completo)
-            initial_output = self.client.read_output(timeout=3)
-            print(f"[DEBUG] Output iniziale ({len(initial_output)} bytes): {repr(initial_output[:200])}")
-            socketio.emit('output', {'data': initial_output}, room=self.session_id)
+            # Leggi output iniziale (prompt login)
+            time.sleep(1)
+            initial_output = self.tn.read_very_eager().decode('latin-1', errors='replace')
+            print(f"[DEBUG] Output iniziale ({len(initial_output)} bytes)")
+            if initial_output:
+                socketio.emit('output', {'data': initial_output}, room=self.session_id)
 
             # Avvia il thread di lettura continua
             self.read_thread = threading.Thread(target=self._read_loop, daemon=True)
@@ -57,42 +61,44 @@ class TerminalSession:
 
             return True
         except Exception as e:
+            print(f"[ERRORE] Connessione fallita: {e}")
             socketio.emit('output', {'data': f'\r\n[ERRORE] Connessione fallita: {str(e)}\r\n'}, room=self.session_id)
             return False
 
     def _read_loop(self):
         """Loop di lettura continua dall'output del terminale"""
-        while self.running and self.client:
+        while self.running and self.tn:
             try:
-                # Leggi con timeout breve per non bloccare
-                output = self.client.read_output(timeout=0.5)
+                # Leggi output disponibile
+                output = self.tn.read_very_eager().decode('latin-1', errors='replace')
                 if output:
-                    print(f"[DEBUG] Output loop ({len(output)} bytes): {repr(output[:100])}")
+                    print(f"[DEBUG] Output loop ({len(output)} bytes)")
                     socketio.emit('output', {'data': output}, room=self.session_id)
             except Exception as e:
                 if self.running:
+                    print(f"[ERRORE] Lettura: {e}")
                     socketio.emit('output', {'data': f'\r\n[ERRORE] Lettura: {str(e)}\r\n'}, room=self.session_id)
                 break
             time.sleep(0.1)
 
     def send_input(self, data):
         """Invia input al terminale"""
-        if self.client and self.running:
+        if self.tn and self.running:
             try:
                 print(f"[DEBUG] Input ricevuto ({len(data)} bytes): {repr(data)}")
-                self.client.tn.write(data.encode('latin-1'))
+                self.tn.write(data.encode('latin-1'))
             except Exception as e:
                 socketio.emit('output', {'data': f'\r\n[ERRORE] Invio: {str(e)}\r\n'}, room=self.session_id)
 
     def close(self):
         """Chiude la sessione"""
         self.running = False
-        if self.client:
+        if self.tn:
             try:
-                self.client.close()
+                self.tn.close()
             except:
                 pass
-        self.client = None
+        self.tn = None
 
 
 @app.route('/')
