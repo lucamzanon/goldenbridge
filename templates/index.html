@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboGOLDEN Web Terminal</title>
+
+    <!-- xterm.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #44ff44;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-box h2 {
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .terminal-container {
+            display: none;
+            flex: 1;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .terminal-wrapper {
+            background: #000;
+            border-radius: 10px;
+            padding: 20px;
+            height: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        #terminal {
+            height: 100%;
+        }
+
+        .info-text {
+            text-align: center;
+            color: #666;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>TurboGOLDEN Web Terminal</h1>
+        <div class="status">
+            <span id="status-text">Disconnesso</span>
+            <div class="status-indicator" id="status-indicator"></div>
+        </div>
+    </div>
+
+    <div class="login-container" id="login-container">
+        <div class="login-box">
+            <h2>Accedi a TurboGOLDEN</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Nome Utente</label>
+                    <input type="text" id="username" name="username" placeholder="Inserisci username" required>
+                </div>
+                <button type="submit" class="btn" id="connect-btn">Connetti</button>
+            </form>
+            <p class="info-text">Il sistema si connetterà a TurboGOLDEN v4.4</p>
+        </div>
+    </div>
+
+    <div class="terminal-container" id="terminal-container">
+        <div class="terminal-wrapper">
+            <div id="terminal"></div>
+        </div>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <!-- xterm.js -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+    <script>
+        // Elementi DOM
+        const loginContainer = document.getElementById('login-container');
+        const terminalContainer = document.getElementById('terminal-container');
+        const loginForm = document.getElementById('login-form');
+        const usernameInput = document.getElementById('username');
+        const connectBtn = document.getElementById('connect-btn');
+        const statusText = document.getElementById('status-text');
+        const statusIndicator = document.getElementById('status-indicator');
+
+        // Connessione Socket.IO
+        const socket = io();
+
+        // Inizializza xterm.js
+        const term = new Terminal({
+            cursorBlink: true,
+            fontSize: 14,
+            fontFamily: 'Courier New, monospace',
+            theme: {
+                background: '#000000',
+                foreground: '#ffffff',
+                cursor: '#ffffff',
+                black: '#000000',
+                red: '#ff0000',
+                green: '#00ff00',
+                yellow: '#ffff00',
+                blue: '#0000ff',
+                magenta: '#ff00ff',
+                cyan: '#00ffff',
+                white: '#ffffff',
+                brightBlack: '#808080',
+                brightRed: '#ff8080',
+                brightGreen: '#80ff80',
+                brightYellow: '#ffff80',
+                brightBlue: '#8080ff',
+                brightMagenta: '#ff80ff',
+                brightCyan: '#80ffff',
+                brightWhite: '#ffffff'
+            },
+            cols: 80,
+            rows: 24
+        });
+
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+
+        // WebSocket eventi
+        socket.on('connect', () => {
+            console.log('WebSocket connesso');
+            updateStatus('Connesso al server', true);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('WebSocket disconnesso');
+            updateStatus('Disconnesso', false);
+        });
+
+        socket.on('connected', (data) => {
+            console.log('Sessione ID:', data.session_id);
+        });
+
+        socket.on('output', (data) => {
+            // Scrivi l'output nel terminale
+            term.write(data.data);
+        });
+
+        socket.on('session_started', (data) => {
+            if (data.status === 'ok') {
+                console.log('Sessione avviata con successo');
+                updateStatus('Connesso a TurboGOLDEN', true);
+            } else {
+                console.error('Errore avvio sessione');
+                updateStatus('Errore connessione', false);
+                alert('Errore durante la connessione al sistema TurboGOLDEN');
+                showLogin();
+            }
+        });
+
+        // Form login
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const username = usernameInput.value.trim();
+            if (!username) {
+                alert('Inserisci un nome utente');
+                return;
+            }
+
+            connectBtn.disabled = true;
+            connectBtn.textContent = 'Connessione in corso...';
+
+            // Mostra il terminale
+            showTerminal();
+
+            // Avvia la sessione
+            socket.emit('start_session', { username: username });
+
+            // Reset dopo 2 secondi
+            setTimeout(() => {
+                connectBtn.disabled = false;
+                connectBtn.textContent = 'Connetti';
+            }, 2000);
+        });
+
+        // Input del terminale
+        term.onData((data) => {
+            // Invia l'input al server
+            socket.emit('input', { data: data });
+        });
+
+        // Resize del terminale
+        window.addEventListener('resize', () => {
+            if (terminalContainer.style.display !== 'none') {
+                fitAddon.fit();
+                socket.emit('resize', {
+                    cols: term.cols,
+                    rows: term.rows
+                });
+            }
+        });
+
+        // Funzioni helper
+        function showTerminal() {
+            loginContainer.style.display = 'none';
+            terminalContainer.style.display = 'flex';
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+            term.focus();
+        }
+
+        function showLogin() {
+            terminalContainer.style.display = 'none';
+            loginContainer.style.display = 'flex';
+            term.clear();
+        }
+
+        function updateStatus(text, connected) {
+            statusText.textContent = text;
+            if (connected) {
+                statusIndicator.classList.add('connected');
+            } else {
+                statusIndicator.classList.remove('connected');
+            }
+        }
+
+        // Focus automatico sull'input username
+        usernameInput.focus();
+    </script>
+</body>
+</html>
