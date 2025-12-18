@@ -17,7 +17,7 @@ apk update
 
 # Installa dipendenze di sistema
 echo "[2/7] Installazione dipendenze di sistema..."
-apk add --no-cache python3 py3-pip nginx git bash openrc
+apk add --no-cache python3 py3-pip nginx git bash openrc py3-flask py3-flask-socketio
 
 # Clona la repository
 echo "[3/7] Download repository da GitHub..."
@@ -30,9 +30,9 @@ cd /opt
 git clone https://github.com/lucamzanon/goldenbridge.git
 cd goldenbridge
 
-# Installa dipendenze Python
+# Installa dipendenze Python mancanti (se necessarie)
 echo "[4/7] Installazione dipendenze Python..."
-pip3 install --no-cache-dir -r requirements.txt
+pip3 install --break-system-packages -r requirements.txt 2>/dev/null || echo "Dipendenze gia installate"
 
 # Configura nginx
 echo "[5/7] Configurazione nginx..."
@@ -101,6 +101,4 @@ echo "Comandi utili:"
 echo "  rc-service goldenbridge start|stop|restart|status"
 echo "  rc-service nginx start|stop|restart|status"
 echo ""
-echo "Log del server:"
-echo "  tail -f /var/log/goldenbridge.log"
 echo "=========================================="

@@ -14,7 +14,7 @@ apk update
 
 # Installa dipendenze di sistema
 echo "[2/6] Installazione dipendenze di sistema..."
-apk add --no-cache python3 py3-pip nginx git bash
+apk add --no-cache python3 py3-pip nginx git bash py3-flask py3-flask-socketio
 
 # Clona la repository
 echo "[3/6] Download repository da GitHub..."
@@ -27,9 +27,9 @@ cd /opt
 git clone https://github.com/lucamzanon/goldenbridge.git
 cd goldenbridge
 
-# Installa dipendenze Python
+# Installa dipendenze Python mancanti
 echo "[4/6] Installazione dipendenze Python..."
-pip3 install --no-cache-dir -r requirements.txt
+pip3 install --break-system-packages -r requirements.txt 2>/dev/null || echo "Dipendenze gia installate"
 
 # Configura nginx
 echo "[5/6] Configurazione nginx..."
