@@ -17,18 +17,12 @@ apk update
 
 # Installa dipendenze di sistema
 echo "[2/7] Installazione dipendenze di sistema..."
-apk add --no-cache \
-    python3 \
-    py3-pip \
-    nginx \
-    git \
-    bash \
-    openrc
+apk add --no-cache python3 py3-pip nginx git bash openrc
 
 # Clona la repository
 echo "[3/7] Download repository da GitHub..."
 if [ -d "/opt/goldenbridge" ]; then
-    echo "Directory /opt/goldenbridge già esistente, rimuovo..."
+    echo "Directory /opt/goldenbridge gia esistente, rimuovo..."
     rm -rf /opt/goldenbridge
 fi
 
@@ -54,7 +48,7 @@ nginx -t
 
 # Crea servizio OpenRC per il server Flask
 echo "[6/7] Creazione servizio goldenbridge..."
-cat > /etc/init.d/goldenbridge <<'EOF'
+cat > /etc/init.d/goldenbridge << 'EOF'
 #!/sbin/openrc-run
 
 name="goldenbridge"
@@ -100,7 +94,7 @@ echo "Servizi attivi:"
 echo "  - goldenbridge (Flask server sulla porta 8080)"
 echo "  - nginx (reverse proxy sulla porta 80)"
 echo ""
-echo "Il server è già attivo!"
+echo "Il server e gia attivo!"
 echo "Apri il browser su: http://$(hostname -i)"
 echo ""
 echo "Comandi utili:"
