@@ -1,0 +1,191 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                  TURBOGOLDEN WEB TERMINAL - QUICK START                  ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+📁 FILE CREATI
+═══════════════════════════════════════════════════════════════════════════
+
+1. turbogolden-terminal.html          → Interfaccia web (singolo file HTML)
+2. telnet-websocket-proxy.py          → Server proxy WebSocket → Telnet
+3. start-turbogolden-terminal.sh      → Script avvio automatico
+4. TURBOGOLDEN-TERMINAL-README.md     → Documentazione completa
+5. QUICK-START.txt                    → Questa guida rapida
+
+═══════════════════════════════════════════════════════════════════════════
+🚀 AVVIO RAPIDO (METODO CONSIGLIATO)
+═══════════════════════════════════════════════════════════════════════════
+
+Avvia tutto con un solo comando:
+
+    cd /home/coder
+    ./start-turbogolden-terminal.sh
+
+Lo script farà:
+  ✓ Verifica dipendenze (installa websockets se necessario)
+  ✓ Avvia proxy WebSocket sulla porta 8080
+  ✓ Avvia server HTTP sulla porta 8000
+  ✓ Apre automaticamente il browser
+
+Poi inserisci:
+  - Server IP: 192.168.0.8
+  - Porta: 23
+  - Utente: CDI
+  - Password: [lascia vuoto]
+
+Clicca CONNETTI e sei dentro TurboGOLDEN!
+
+═══════════════════════════════════════════════════════════════════════════
+⚙️  AVVIO MANUALE (PASSO PASSO)
+═══════════════════════════════════════════════════════════════════════════
+
+PASSO 1: Installa dipendenze
+────────────────────────────
+    pip3 install websockets
+
+PASSO 2: Avvia il proxy WebSocket
+──────────────────────────────────
+    cd /home/coder
+    python3 telnet-websocket-proxy.py
+
+    → Server in ascolto su ws://0.0.0.0:8080
+
+PASSO 3: Apri l'interfaccia web
+────────────────────────────────
+
+Opzione A - Con server HTTP:
+    cd /home/coder
+    python3 -m http.server 8000
+    → Apri browser: http://localhost:8000/turbogolden-terminal.html
+
+Opzione B - Direttamente dal file:
+    firefox /home/coder/turbogolden-terminal.html
+
+PASSO 4: Connetti a TurboGOLDEN
+────────────────────────────────
+    1. Compila il form con i dati di connessione
+    2. Clicca "CONNETTI"
+    3. Il sistema si autentica automaticamente
+    4. Sei nel menu principale!
+
+═══════════════════════════════════════════════════════════════════════════
+🔧 CONFIGURAZIONE
+═══════════════════════════════════════════════════════════════════════════
+
+Modificare IP del server TurboGOLDEN:
+    Edita turbogolden-terminal.html → cerca "192.168.0.8"
+
+Modificare porta WebSocket proxy:
+    Edita telnet-websocket-proxy.py → cerca "WS_PORT = 8080"
+
+═══════════════════════════════════════════════════════════════════════════
+🎮 CONTROLLI TERMINALE
+═══════════════════════════════════════════════════════════════════════════
+
+Nel terminale web trovi questi pulsanti:
+
+    [CTRL+C]      → Interruzione comando
+    [ESC]         → Tasto Escape
+    [CLEAR]       → Pulisci schermo
+    [DISCONNETTI] → Chiudi connessione e torna al login
+
+═══════════════════════════════════════════════════════════════════════════
+🐛 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════
+
+Problema: "Impossibile connettersi al server proxy"
+Soluzione: Il proxy non è in esecuzione, avvia:
+           python3 telnet-websocket-proxy.py
+
+Problema: "Connection refused" a 192.168.0.8
+Soluzione: Verifica che TurboGOLDEN sia raggiungibile:
+           ping 192.168.0.8
+           telnet 192.168.0.8 23
+
+Problema: Caratteri strani nel terminale
+Soluzione: Verifica encoding latin-1 nel proxy (già configurato)
+
+Problema: Timeout durante login
+Soluzione: Aumenta i tempi in telnet-websocket-proxy.py:
+           time.sleep(5) → time.sleep(8)
+
+═══════════════════════════════════════════════════════════════════════════
+📖 DOCUMENTAZIONE COMPLETA
+═══════════════════════════════════════════════════════════════════════════
+
+Leggi il file completo per dettagli:
+
+    cat /home/coder/TURBOGOLDEN-TERMINAL-README.md
+
+═══════════════════════════════════════════════════════════════════════════
+🏗️  ARCHITETTURA
+═══════════════════════════════════════════════════════════════════════════
+
+    ┌─────────────────┐
+    │    Browser      │  ← turbogolden-terminal.html
+    │   (xterm.js)    │     Interface web con terminale VT220
+    └────────┬────────┘
+             │ WebSocket (ws://localhost:8080)
+             ↓
+    ┌─────────────────┐
+    │  Proxy Server   │  ← telnet-websocket-proxy.py
+    │  (WebSocket →   │     Converte WebSocket → Telnet
+    │   Telnet)       │     Gestisce TCP_NODELAY
+    └────────┬────────┘
+             │ Telnet (192.168.0.8:23)
+             │ TCP_NODELAY = 1
+             ↓
+    ┌─────────────────┐
+    │  TurboGOLDEN    │  ← Sistema gestionale
+    │  v4.4           │     Emulazione VT220
+    │  Linux Server   │     Encoding Latin-1
+    └─────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════
+✨ CARATTERISTICHE
+═══════════════════════════════════════════════════════════════════════════
+
+✅ Singolo file HTML - facile da distribuire
+✅ Emulazione VT220 completa con xterm.js
+✅ Supporto completo sequenze ANSI/colori
+✅ Login automatico a TurboGOLDEN
+✅ TCP_NODELAY per stabilità connessione
+✅ WebSocket real-time bidirezionale
+✅ Gestione automatica avvisi sistema
+✅ Controlli terminale integrati
+✅ Encoding Latin-1 corretto
+✅ Dimensioni 80×24 (standard TurboGOLDEN)
+
+═══════════════════════════════════════════════════════════════════════════
+🔒 SICUREZZA (IMPORTANTE!)
+═══════════════════════════════════════════════════════════════════════════
+
+⚠️  Questa configurazione è per sviluppo/uso interno!
+
+Per produzione implementa:
+  □ Autenticazione utente
+  □ HTTPS/WSS (WebSocket Secure)
+  □ Firewall/limitazione IP
+  □ Rate limiting
+  □ Logging sessioni
+  □ Reverse proxy (nginx)
+
+═══════════════════════════════════════════════════════════════════════════
+📞 SUPPORTO
+═══════════════════════════════════════════════════════════════════════════
+
+Documentazione TurboGOLDEN:
+    /home/coder/goldenbridge/docs/
+
+Configurazioni AnzioWIN di riferimento:
+    /home/coder/anziowin/Golden_*.def
+
+Server Flask alternativo:
+    /home/coder/turbogolden-web/
+
+═══════════════════════════════════════════════════════════════════════════
+
+Creato: 1 Gennaio 2026
+Versione: 1.0
+Sistema: TurboGOLDEN v4.4 Web Terminal
+
+═══════════════════════════════════════════════════════════════════════════

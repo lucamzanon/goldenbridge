@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboGOLDEN Terminal</title>
+
+    <!-- xterm.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        .header {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #00ff00;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            color: #00ff00;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff0000;
+        }
+
+        .status-dot.connected {
+            background: #00ff00;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .login-panel {
+            background: #2d2d2d;
+            padding: 30px;
+            margin: 50px auto;
+            max-width: 500px;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+        }
+
+        .login-panel h2 {
+            color: #00ff00;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00ff00;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #00ff00;
+            box-shadow: 0 0 5px #00ff00;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #00cc00;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .terminal-container {
+            display: none;
+            flex: 1;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .terminal-wrapper {
+            background: #000;
+            height: 100%;
+            border: 2px solid #00ff00;
+        }
+
+        #terminal {
+            height: 100%;
+            padding: 10px;
+        }
+
+        .info {
+            text-align: center;
+            margin-top: 15px;
+            color: #888;
+            font-size: 12px;
+        }
+
+        .controls {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            display: none;
+            gap: 10px;
+            border-top: 1px solid #00ff00;
+        }
+
+        .controls button {
+            padding: 8px 15px;
+            background: #444;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .controls button:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>TurboGOLDEN Terminal - 192.168.0.8</h1>
+        <div class="status">
+            <span id="status-text">Disconnesso</span>
+            <div class="status-dot" id="status-dot"></div>
+        </div>
+    </div>
+
+    <div id="login-panel" class="login-panel">
+        <h2>╔═══════════════════════════╗</h2>
+        <h2>║  CONNESSIONE TURBOGOLDEN  ║</h2>
+        <h2>╚═══════════════════════════╝</h2>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label>SERVER IP:</label>
+                <input type="text" id="server-ip" value="192.168.0.8" required>
+            </div>
+
+            <div class="form-group">
+                <label>PORTA:</label>
+                <input type="number" id="server-port" value="23" required>
+            </div>
+
+            <div class="form-group">
+                <label>UTENTE APPLICATIVO:</label>
+                <input type="text" id="username" value="CDI" required>
+            </div>
+
+            <div class="form-group">
+                <label>PASSWORD (opzionale):</label>
+                <input type="password" id="password" placeholder="[INVIO se vuota]">
+            </div>
+
+            <button type="submit" class="btn" id="connect-btn">▶ CONNETTI</button>
+        </form>
+
+        <p class="info">Sistema: TurboGOLDEN v4.4 | Emulazione: VT220 | Encoding: Latin-1</p>
+    </div>
+
+    <div class="terminal-container" id="terminal-container">
+        <div class="terminal-wrapper">
+            <div id="terminal"></div>
+        </div>
+    </div>
+
+    <div class="controls" id="controls">
+        <button onclick="sendCtrlC()">CTRL+C</button>
+        <button onclick="sendEscape()">ESC</button>
+        <button onclick="clearScreen()">CLEAR</button>
+        <button onclick="disconnect()">DISCONNETTI</button>
+    </div>
+
+    <!-- xterm.js -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+    <script>
+        // ============================================================================
+        // CONFIGURAZIONE GLOBALE
+        // ============================================================================
+
+        let ws = null;
+        let term = null;
+        let fitAddon = null;
+        let connectionConfig = {
+            serverIp: '192.168.0.8',
+            serverPort: 23,
+            username: 'CDI',
+            password: ''
+        };
+
+        // ============================================================================
+        // INIZIALIZZAZIONE TERMINALE
+        // ============================================================================
+
+        function initTerminal() {
+            term = new Terminal({
+                cursorBlink: true,
+                fontSize: 14,
+                fontFamily: 'Courier New, monospace',
+                theme: {
+                    background: '#000000',
+                    foreground: '#00ff00',
+                    cursor: '#00ff00',
+                    cursorAccent: '#000000',
+                    selection: 'rgba(0, 255, 0, 0.3)',
+                    black: '#000000',
+                    red: '#ff0000',
+                    green: '#00ff00',
+                    yellow: '#ffff00',
+                    blue: '#0000ff',
+                    magenta: '#ff00ff',
+                    cyan: '#00ffff',
+                    white: '#ffffff',
+                    brightBlack: '#808080',
+                    brightRed: '#ff8080',
+                    brightGreen: '#80ff80',
+                    brightYellow: '#ffff80',
+                    brightBlue: '#8080ff',
+                    brightMagenta: '#ff80ff',
+                    brightCyan: '#80ffff',
+                    brightWhite: '#ffffff'
+                },
+                cols: 80,
+                rows: 24,
+                scrollback: 1000,
+                convertEol: false
+            });
+
+            fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+
+            // Gestione input
+            term.onData(data => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'input',
+                        data: data
+                    }));
+                }
+            });
+        }
+
+        // ============================================================================
+        // GESTIONE WEBSOCKET - CONNESSIONE AL PROXY TELNET
+        // ============================================================================
+
+        function connectToTelnetProxy() {
+            updateStatus('Connessione in corso...', false);
+
+            // IMPORTANTE: Devi avere un WebSocket server proxy che si connette a telnet
+            // Per ora uso una connessione diretta simulata - vedi funzione connectDirectTelnet()
+
+            // Se hai un server WebSocket proxy:
+            // ws = new WebSocket('ws://localhost:8080/telnet');
+
+            // Per questa demo, uso una simulazione diretta
+            connectDirectTelnet();
+        }
+
+        // ============================================================================
+        // CONNESSIONE TELNET DIRETTA (SIMULATA VIA WEBSOCKET PROXY)
+        // ============================================================================
+
+        function connectDirectTelnet() {
+            // Questa funzione richiede un server WebSocket che faccia da proxy verso telnet
+            // Esempio: ws://localhost:8080/telnet-proxy
+
+            // Se il file è aperto direttamente (file://), usa localhost
+            const hostname = window.location.hostname || 'localhost';
+            const proxyUrl = `ws://${hostname}:8080/telnet`;
+
+            try {
+                ws = new WebSocket(proxyUrl);
+
+                ws.onopen = () => {
+                    console.log('WebSocket connesso al proxy telnet');
+                    updateStatus('Proxy connesso - inizializzazione...', true);
+
+                    // Invia configurazione di connessione al proxy
+                    ws.send(JSON.stringify({
+                        type: 'connect',
+                        host: connectionConfig.serverIp,
+                        port: connectionConfig.serverPort,
+                        username: connectionConfig.username,
+                        password: connectionConfig.password
+                    }));
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const msg = JSON.parse(event.data);
+
+                        switch (msg.type) {
+                            case 'connected':
+                                updateStatus('Connesso a TurboGOLDEN', true);
+                                showTerminal();
+                                break;
+
+                            case 'data':
+                                // Scrivi i dati ricevuti nel terminale
+                                if (msg.data) {
+                                    term.write(msg.data);
+                                }
+                                break;
+
+                            case 'error':
+                                console.error('Errore:', msg.message);
+                                term.write(`\r\n\x1b[31m[ERRORE] ${msg.message}\x1b[0m\r\n`);
+                                break;
+
+                            case 'closed':
+                                updateStatus('Disconnesso', false);
+                                term.write('\r\n\x1b[33m[Connessione chiusa]\x1b[0m\r\n');
+                                break;
+                        }
+                    } catch (e) {
+                        console.error('Errore parsing messaggio:', e);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateStatus('Errore connessione', false);
+                    alert('Impossibile connettersi al server proxy.\n\nAssicurati che il server WebSocket sia in esecuzione su porta 8080.');
+                    showLogin();
+                };
+
+                ws.onclose = () => {
+                    console.log('WebSocket chiuso');
+                    updateStatus('Disconnesso', false);
+                };
+
+            } catch (error) {
+                console.error('Errore creazione WebSocket:', error);
+                alert('Errore durante la connessione: ' + error.message);
+                showLogin();
+            }
+        }
+
+        // ============================================================================
+        // GESTIONE UI
+        // ============================================================================
+
+        function showTerminal() {
+            document.getElementById('login-panel').style.display = 'none';
+            document.getElementById('terminal-container').style.display = 'flex';
+            document.getElementById('controls').style.display = 'flex';
+
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+            term.focus();
+
+            // Messaggio di benvenuto
+            term.write('\x1b[32m╔════════════════════════════════════════════════════════════════════════════╗\x1b[0m\r\n');
+            term.write('\x1b[32m║                    TURBOGOLDEN WEB TERMINAL v1.0                          ║\x1b[0m\r\n');
+            term.write('\x1b[32m╚════════════════════════════════════════════════════════════════════════════╝\x1b[0m\r\n');
+            term.write('\r\n');
+        }
+
+        function showLogin() {
+            document.getElementById('terminal-container').style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
+            document.getElementById('login-panel').style.display = 'block';
+
+            if (term) {
+                term.clear();
+            }
+        }
+
+        function updateStatus(text, connected) {
+            document.getElementById('status-text').textContent = text;
+            const dot = document.getElementById('status-dot');
+
+            if (connected) {
+                dot.classList.add('connected');
+            } else {
+                dot.classList.remove('connected');
+            }
+        }
+
+        // ============================================================================
+        // FUNZIONI CONTROLLO TERMINALE
+        // ============================================================================
+
+        function sendCtrlC() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'input',
+                    data: '\x03' // CTRL+C
+                }));
+            }
+        }
+
+        function sendEscape() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'input',
+                    data: '\x1b' // ESC
+                }));
+            }
+        }
+
+        function clearScreen() {
+            if (term) {
+                term.clear();
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+            showLogin();
+        }
+
+        // ============================================================================
+        // GESTIONE FORM LOGIN
+        // ============================================================================
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            connectionConfig = {
+                serverIp: document.getElementById('server-ip').value.trim(),
+                serverPort: parseInt(document.getElementById('server-port').value),
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value
+            };
+
+            if (!connectionConfig.serverIp || !connectionConfig.username) {
+                alert('Inserisci almeno IP del server e username!');
+                return;
+            }
+
+            const btn = document.getElementById('connect-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ CONNESSIONE IN CORSO...';
+
+            // Inizializza terminale se non già fatto
+            if (!term) {
+                initTerminal();
+            }
+
+            // Connetti al proxy telnet
+            connectToTelnetProxy();
+
+            // Reset button dopo 2 secondi
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '▶ CONNETTI';
+            }, 2000);
+        });
+
+        // ============================================================================
+        // GESTIONE RESIZE FINESTRA
+        // ============================================================================
+
+        window.addEventListener('resize', () => {
+            if (fitAddon && document.getElementById('terminal-container').style.display !== 'none') {
+                fitAddon.fit();
+            }
+        });
+
+        // ============================================================================
+        // INIZIALIZZAZIONE
+        // ============================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('TurboGOLDEN Terminal caricato');
+            document.getElementById('username').focus();
+        });
+
+        // ============================================================================
+        // NOTE PER L'IMPLEMENTAZIONE
+        // ============================================================================
+
+        /*
+         * IMPORTANTE: Questo file HTML richiede un server WebSocket proxy che si connetta
+         * al server telnet TurboGOLDEN.
+         *
+         * OPZIONE 1: Usa il server Flask già presente in /home/coder/turbogolden-web
+         *   - Avvia: cd /home/coder/turbogolden-web && python3 app.py
+         *   - Il server ascolterà su porta 8080
+         *
+         * OPZIONE 2: Crea un semplice proxy Node.js con ws e telnet-client
+         *
+         * OPZIONE 3: Per un file COMPLETAMENTE standalone senza server,
+         *   dovresti usare un'estensione browser che supporti connessioni TCP raw
+         *   (non possibile con JavaScript standard per motivi di sicurezza)
+         *
+         * Il protocollo WebSocket utilizzato:
+         *
+         * CLIENT -> SERVER:
+         *   { "type": "connect", "host": "192.168.0.8", "port": 23, "username": "CDI", "password": "" }
+         *   { "type": "input", "data": "comando\n" }
+         *
+         * SERVER -> CLIENT:
+         *   { "type": "connected" }
+         *   { "type": "data", "data": "output dal terminale" }
+         *   { "type": "error", "message": "messaggio errore" }
+         *   { "type": "closed" }
+         */
+    </script>
+</body>
+</html>
