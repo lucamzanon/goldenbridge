@@ -1,0 +1,33 @@
+# Configurazione Traefik per TurboGOLDEN
+# File: /etc/traefik/dynamic/turbogolden.yml
+
+http:
+  routers:
+    # Router per file HTML statici
+    turbogolden-web:
+      rule: "Host(`golden.orofruit.com`)"
+      service: turbogolden-web-service
+      entryPoints:
+        - web
+      priority: 100
+
+    # Router per WebSocket proxy
+    turbogolden-websocket:
+      rule: "Host(`golden.orofruit.com`) && PathPrefix(`/telnet`)"
+      service: turbogolden-websocket-service
+      entryPoints:
+        - web
+      priority: 200
+
+  services:
+    # Servizio web (nginx con HTML)
+    turbogolden-web-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.8.113:8000"
+
+    # Servizio WebSocket proxy
+    turbogolden-websocket-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.8.113:8080"
