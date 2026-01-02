@@ -152,7 +152,7 @@ async def handle_websocket(websocket, path):
                     # Richiesta di connessione al server telnet
                     host = msg.get('host', '192.168.0.8')
                     port = msg.get('port', 23)
-                    username = msg.get('username', 'CDI')
+                    username = msg.get('username', 'zanon')
                     password = msg.get('password', '')
 
                     # Chiudi eventuale sessione precedente
