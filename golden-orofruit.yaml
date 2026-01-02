@@ -1,0 +1,34 @@
+http:
+  routers:
+    # Router principale per golden.orofruit.com
+    golden-main:
+      rule: "Host(`golden.orofruit.com`)"
+      service: golden-service
+      entryPoints:
+        - websecure
+      priority: 100
+      tls: {}
+
+    # Router per WebSocket (con priorità maggiore per matchare prima)
+    golden-websocket:
+      rule: "Host(`golden.orofruit.com`) && PathPrefix(`/telnet`)"
+      service: golden-websocket-service
+      entryPoints:
+        - websecure
+      priority: 200
+      tls: {}
+
+  services:
+    # Servizio per interfaccia web HTML (porta 8000)
+    golden-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.8.113:8000"
+        passHostHeader: true
+
+    # Servizio per WebSocket proxy (porta 8080)
+    golden-websocket-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.8.113:8080"
+        passHostHeader: true

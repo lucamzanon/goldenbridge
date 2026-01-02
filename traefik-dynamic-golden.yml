@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════════
+# Configurazione Traefik Dynamic per golden.orofruit.com
+# File da copiare in: /etc/traefik/dynamic/ o dove hai i file dinamici
+# ═══════════════════════════════════════════════════════════════
+
+http:
+  routers:
+    # Router per il terminale web (file HTML)
+    golden-web:
+      rule: "Host(`golden.orofruit.com`)"
+      service: golden-web-service
+      entryPoints:
+        - web
+      priority: 100
+
+    # Router per WebSocket proxy (con priorità maggiore)
+    golden-websocket:
+      rule: "Host(`golden.orofruit.com`) && PathPrefix(`/telnet`)"
+      service: golden-websocket-service
+      entryPoints:
+        - web
+      priority: 200
+
+  services:
+    # Servizio per l'interfaccia web (porta 8000)
+    golden-web-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.8.113:8000"
+        passHostHeader: true
+
+    # Servizio per il proxy WebSocket (porta 8080)
+    golden-websocket-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.8.113:8080"
+        passHostHeader: true
+
+  middlewares:
+    # Middleware per gestire WebSocket (opzionale, dipende da Traefik)
+    websocket-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "http"
