@@ -325,7 +325,10 @@
 
             // Se il file è aperto direttamente (file://), usa localhost
             const hostname = window.location.hostname || 'localhost';
-            const proxyUrl = `ws://${hostname}:8080/telnet`;
+
+            // Usa WSS se la pagina è servita su HTTPS, altrimenti WS
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const proxyUrl = `${protocol}//${hostname}/telnet`;
 
             try {
                 ws = new WebSocket(proxyUrl);
