@@ -171,6 +171,38 @@
         .controls button:hover {
             background: #555;
         }
+
+        .debug-log {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid #00ff00;
+            display: none;
+        }
+
+        .debug-log.visible {
+            display: block;
+        }
+
+        .debug-log div {
+            margin: 2px 0;
+        }
+
+        .debug-log .error {
+            color: #ff0000;
+        }
+
+        .debug-log .success {
+            color: #00ff00;
+        }
+
+        .debug-log .info {
+            color: #ffff00;
+        }
     </style>
 </head>
 <body>
@@ -180,6 +212,10 @@
             <span id="status-text">Disconnesso</span>
             <div class="status-dot" id="status-dot"></div>
         </div>
+    </div>
+
+    <div class="debug-log visible" id="debug-log">
+        <div class="info">🔍 Debug Log - Connessione in corso...</div>
     </div>
 
     <div id="login-panel" class="login-panel">
@@ -247,6 +283,21 @@
         };
 
         // ============================================================================
+        // DEBUG LOGGING
+        // ============================================================================
+
+        function debugLog(message, type = 'info') {
+            const debugDiv = document.getElementById('debug-log');
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            debugDiv.appendChild(logEntry);
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // ============================================================================
         // INIZIALIZZAZIONE TERMINALE
         // ============================================================================
 
@@ -304,6 +355,7 @@
 
         function connectToTelnetProxy() {
             updateStatus('Connessione in corso...', false);
+            debugLog('Avvio connessione al proxy WebSocket...', 'info');
 
             // IMPORTANTE: Devi avere un WebSocket server proxy che si connette a telnet
             // Per ora uso una connessione diretta simulata - vedi funzione connectDirectTelnet()
@@ -330,29 +382,40 @@
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const proxyUrl = `${protocol}//${hostname}/telnet`;
 
+            debugLog(`Tentativo connessione a: ${proxyUrl}`, 'info');
+            debugLog(`Protocollo: ${protocol}`, 'info');
+
             try {
                 ws = new WebSocket(proxyUrl);
 
                 ws.onopen = () => {
                     console.log('WebSocket connesso al proxy telnet');
+                    debugLog('✅ WebSocket connesso!', 'success');
                     updateStatus('Proxy connesso - inizializzazione...', true);
 
-                    // Invia configurazione di connessione al proxy
-                    ws.send(JSON.stringify({
+                    const connectMsg = {
                         type: 'connect',
                         host: connectionConfig.serverIp,
                         port: connectionConfig.serverPort,
                         username: connectionConfig.username,
                         password: connectionConfig.password
-                    }));
+                    };
+
+                    debugLog(`Invio comando connect: ${connectionConfig.serverIp}:${connectionConfig.serverPort}`, 'info');
+                    debugLog(`Username: ${connectionConfig.username}`, 'info');
+
+                    // Invia configurazione di connessione al proxy
+                    ws.send(JSON.stringify(connectMsg));
                 };
 
                 ws.onmessage = (event) => {
                     try {
                         const msg = JSON.parse(event.data);
+                        debugLog(`Ricevuto messaggio tipo: ${msg.type}`, 'info');
 
                         switch (msg.type) {
                             case 'connected':
+                                debugLog('✅ Connesso al server TurboGOLDEN!', 'success');
                                 updateStatus('Connesso a TurboGOLDEN', true);
                                 showTerminal();
                                 break;
@@ -360,39 +423,46 @@
                             case 'data':
                                 // Scrivi i dati ricevuti nel terminale
                                 if (msg.data) {
+                                    debugLog(`Ricevuti ${msg.data.length} bytes`, 'success');
                                     term.write(msg.data);
                                 }
                                 break;
 
                             case 'error':
                                 console.error('Errore:', msg.message);
+                                debugLog(`❌ ERRORE: ${msg.message}`, 'error');
                                 term.write(`\r\n\x1b[31m[ERRORE] ${msg.message}\x1b[0m\r\n`);
                                 break;
 
                             case 'closed':
+                                debugLog('Connessione chiusa dal server', 'info');
                                 updateStatus('Disconnesso', false);
                                 term.write('\r\n\x1b[33m[Connessione chiusa]\x1b[0m\r\n');
                                 break;
                         }
                     } catch (e) {
                         console.error('Errore parsing messaggio:', e);
+                        debugLog(`❌ Errore parsing: ${e.message}`, 'error');
                     }
                 };
 
                 ws.onerror = (error) => {
                     console.error('WebSocket error:', error);
+                    debugLog(`❌ Errore WebSocket: ${error}`, 'error');
                     updateStatus('Errore connessione', false);
                     alert('Impossibile connettersi al server proxy.\n\nAssicurati che il server WebSocket sia in esecuzione su porta 8080.');
                     showLogin();
                 };
 
-                ws.onclose = () => {
+                ws.onclose = (event) => {
                     console.log('WebSocket chiuso');
+                    debugLog(`WebSocket chiuso - Code: ${event.code}, Reason: ${event.reason}`, 'info');
                     updateStatus('Disconnesso', false);
                 };
 
             } catch (error) {
                 console.error('Errore creazione WebSocket:', error);
+                debugLog(`❌ Errore creazione WebSocket: ${error.message}`, 'error');
                 alert('Errore durante la connessione: ' + error.message);
                 showLogin();
             }
